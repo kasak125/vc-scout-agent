@@ -1,0 +1,20 @@
+[project]
+name = "vc-scout-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Hadi Khan", email = "hadikhan.techx@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "crewai>=1.2.0",
+    "crewai-tools>=1.2.0",
+    "exa-py>=1.16.1",
+    "pydantic>=2.12.3",
+    "python-dotenv>=1.2.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
