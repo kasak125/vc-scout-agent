@@ -71,3 +71,5 @@ Built with CrewAI + Exa search + GPT-5 Nano. Runs locally, costs about $0.02 per
 ## License
 
 MIT - do whatever you want with it!
+
+P.s. this was vibecoded with WarpCLI and Cursor. If you're looking for something specific, please contact me (link in bio).
