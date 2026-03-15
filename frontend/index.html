@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VC Scout Agent</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0b0f1a;
+        --night: #0a0c14;
+        --navy: #101726;
+        --slate: #1e2a3a;
+        --mist: #c9d3e3;
+        --muted: #8fa3b8;
+        --lime: #b3ff3b;
+        --tangerine: #ffb454;
+        --rose: #f4747f;
+        --glass: rgba(20, 28, 44, 0.72);
+        --border: rgba(163, 185, 214, 0.18);
+        --shadow: 0 24px 60px rgba(2, 6, 23, 0.55);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        color: var(--mist);
+        background:
+          radial-gradient(1000px 600px at 10% -10%, rgba(255, 180, 84, 0.25) 0%, transparent 55%),
+          radial-gradient(1200px 700px at 85% 10%, rgba(244, 116, 127, 0.2) 0%, transparent 60%),
+          linear-gradient(160deg, #0a0c14 0%, #0b1220 40%, #0d1426 100%);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+      }
+      .frame {
+        width: min(1100px, 100%);
+        display: grid;
+        gap: 20px;
+      }
+      .panel {
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+      }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .badge {
+        align-self: flex-start;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(179, 255, 59, 0.14);
+        color: var(--lime);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        font-family: "Fraunces", serif;
+        font-weight: 700;
+        font-size: 32px;
+        color: #f8fafc;
+      }
+      .subtitle {
+        color: var(--muted);
+        line-height: 1.5;
+        font-size: 14px;
+      }
+      .stat {
+        display: grid;
+        gap: 6px;
+        margin-top: 18px;
+        padding: 12px;
+        background: rgba(16, 23, 38, 0.6);
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .stat strong {
+        color: #fef08a;
+        font-size: 18px;
+      }
+      .main {
+        display: grid;
+        gap: 18px;
+      }
+      .hero {
+        display: grid;
+        gap: 18px;
+      }
+      .hero-title {
+        font-family: "Fraunces", serif;
+        font-size: 34px;
+        margin: 0;
+        color: #f8fafc;
+      }
+      .hero-link {
+        color: #e2f7ff;
+        text-decoration: none;
+        border-bottom: 2px solid rgba(178, 243, 255, 0.7);
+        padding-bottom: 2px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+      .how-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .how-card {
+        padding: 14px 0 0;
+        border-top: 2px solid rgba(90, 231, 255, 0.65);
+      }
+      .how-card h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+        color: #f8fafc;
+      }
+      .how-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .impact {
+        display: grid;
+        gap: 16px;
+      }
+      .impact-title {
+        text-align: center;
+        font-size: 26px;
+        font-weight: 700;
+        color: #f8fafc;
+      }
+      .impact-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+      .impact-card {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: rgba(8, 13, 24, 0.9);
+        padding: 16px;
+      }
+      .impact-number {
+        font-size: 36px;
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 0 0 6px;
+      }
+      .impact-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+      .impact-list {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+      }
+      textarea {
+        width: 100%;
+        min-height: 120px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(8, 13, 24, 0.9);
+        color: #e2e8f0;
+        padding: 14px 16px;
+        font-size: 15px;
+        resize: vertical;
+      }
+      .controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        background: linear-gradient(135deg, var(--lime), #66ffcb);
+        color: #042b1c;
+        border: none;
+        border-radius: 14px;
+        padding: 12px 18px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 12px 30px rgba(102, 255, 203, 0.25);
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .output {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: rgba(8, 13, 24, 0.9);
+        padding: 18px;
+        min-height: 220px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .structured {
+        display: grid;
+        gap: 12px;
+      }
+      .section-card {
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: rgba(12, 18, 30, 0.9);
+        padding: 12px;
+      }
+      .section-card h4 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        color: var(--mist);
+      }
+      th, td {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        vertical-align: top;
+      }
+      th {
+        color: #e2e8f0;
+        font-weight: 600;
+      }
+      .kv {
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--mist);
+      }
+      .kv strong {
+        color: #e2e8f0;
+      }
+      .raw {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed rgba(148, 163, 184, 0.25);
+        white-space: pre-wrap;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .feature-card {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: rgba(10, 16, 28, 0.85);
+        padding: 16px;
+        display: grid;
+        gap: 10px;
+      }
+      .feature-title {
+        font-weight: 700;
+        color: #f8fafc;
+      }
+      .feature-desc {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .feature-output {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(8, 13, 24, 0.9);
+        padding: 12px;
+        min-height: 120px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 13px;
+      }
+      .feature-input {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(8, 13, 24, 0.9);
+        color: #e2e8f0;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      .feature-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .ghost {
+        background: transparent;
+        border: 1px solid rgba(179, 255, 59, 0.5);
+        color: var(--lime);
+        box-shadow: none;
+      }
+      .chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 180, 84, 0.12);
+        color: var(--tangerine);
+        font-size: 12px;
+      }
+      .chip.secondary {
+        background: rgba(244, 116, 127, 0.12);
+        color: var(--rose);
+      }
+      @media (max-width: 860px) {
+        .frame { grid-template-columns: 1fr; }
+        .how-grid { grid-template-columns: 1fr; }
+        .impact-grid { grid-template-columns: 1fr; }
+        .features {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <section class="panel main">
+        <div>
+          <label for="goal">Founder + company</label>
+          <textarea id="goal" placeholder="Sam Altman, OpenAI">Sam Altman, OpenAI</textarea>
+        </div>
+        <div class="controls">
+          <button id="run">Scout</button>
+          <span class="status">Results will appear below.</span>
+        </div>
+        <div class="output" id="output">
+          <div class="structured"></div>
+          <div class="raw">Result will appear here.</div>
+        </div>
+
+        <div class="features">
+          <div class="feature-card">
+            <div class="feature-title">Monitor Platforms</div>
+            <div class="feature-desc">Scan tech platforms and summarize live signals.</div>
+            <input id="monitorInput" class="feature-input" placeholder="e.g., AI agents, climate tech" />
+            <div class="feature-actions">
+              <button id="monitorBtn" class="ghost">Run</button>
+              <span class="status" id="monitorStatus">Idle</span>
+            </div>
+            <div class="feature-output" id="monitorOutput">
+              <div class="structured"></div>
+              <div class="raw">Monitoring results will appear here.</div>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-title">Trend Detection</div>
+            <div class="feature-desc">Identify emerging technologies and why they matter now.</div>
+            <input id="trendInput" class="feature-input" placeholder="e.g., AI in healthcare" />
+            <div class="feature-actions">
+              <button id="trendBtn" class="ghost">Run</button>
+              <span class="status" id="trendStatus">Idle</span>
+            </div>
+            <div class="feature-output" id="trendOutput">
+              <div class="structured"></div>
+              <div class="raw">Trend results will appear here.</div>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-title">Startup Discovery</div>
+            <div class="feature-desc">Generate promising startup concepts by sector.</div>
+            <input id="discoverInput" class="feature-input" placeholder="e.g., ClimateTech SaaS" />
+            <div class="feature-actions">
+              <button id="discoverBtn" class="ghost">Run</button>
+              <span class="status" id="discoverStatus">Idle</span>
+            </div>
+            <div class="feature-output" id="discoverOutput">
+              <div class="structured"></div>
+              <div class="raw">Discovery results will appear here.</div>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-title">Founder Interview</div>
+            <div class="feature-desc">Simulate a sharp VC-style interview with a founder.</div>
+            <input id="interviewInput" class="feature-input" placeholder="e.g., Jane Doe, Acme AI" />
+            <div class="feature-actions">
+              <button id="interviewBtn" class="ghost">Run</button>
+              <span class="status" id="interviewStatus">Idle</span>
+            </div>
+            <div class="feature-output" id="interviewOutput">
+              <div class="structured"></div>
+              <div class="raw">Interview questions will appear here.</div>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-title">Investment Memo</div>
+            <div class="feature-desc">Generate a VC-style memo with risks and recommendation.</div>
+            <input id="memoInput" class="feature-input" placeholder="e.g., OpenAI, Sam Altman" />
+            <div class="feature-actions">
+              <button id="memoBtn" class="ghost">Run</button>
+              <span class="status" id="memoStatus">Idle</span>
+            </div>
+            <div class="feature-output" id="memoOutput">
+              <div class="structured"></div>
+              <div class="raw">Memo will appear here.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const runBtn = document.getElementById("run");
+      const goal = document.getElementById("goal");
+      const statusEl = document.getElementById("status");
+      const output = document.getElementById("output");
+      const trendBtn = document.getElementById("trendBtn");
+      const discoverBtn = document.getElementById("discoverBtn");
+      const interviewBtn = document.getElementById("interviewBtn");
+      const memoBtn = document.getElementById("memoBtn");
+      const monitorBtn = document.getElementById("monitorBtn");
+
+      function renderStructured(text, container) {
+        container.innerHTML = "";
+        if (!text || !text.includes("Header:")) {
+          return;
+        }
+
+        const sections = [];
+        const headerRegex = /Header:\s*(.+)/g;
+        let match;
+        let lastIndex = 0;
+        let lastTitle = null;
+
+        while ((match = headerRegex.exec(text)) !== null) {
+          if (lastTitle !== null) {
+            sections.push({
+              title: lastTitle,
+              body: text.slice(lastIndex, match.index).trim()
+            });
+          }
+          lastTitle = match[1].trim();
+          lastIndex = headerRegex.lastIndex;
+        }
+        if (lastTitle !== null) {
+          sections.push({
+            title: lastTitle,
+            body: text.slice(lastIndex).trim()
+          });
+        }
+
+        sections.forEach((section) => {
+          const card = document.createElement("div");
+          card.className = "section-card";
+          const title = document.createElement("h4");
+          title.textContent = section.title;
+          card.appendChild(title);
+
+          if (section.title.toLowerCase().includes("evidence")) {
+            const table = document.createElement("table");
+            table.innerHTML = "<thead><tr><th>Data Point</th><th>Inference</th><th>Confidence</th></tr></thead>";
+            const tbody = document.createElement("tbody");
+
+            const itemRegex = /- Data Point:\s*([\s\S]*?)(?=\n- Data Point:|\nHeader:|$)/g;
+            let itemMatch;
+            while ((itemMatch = itemRegex.exec(section.body)) !== null) {
+              const block = itemMatch[1].trim();
+              const dataPointMatch = block.match(/^(.*?)(?:\n|$)/);
+              const inferenceMatch = block.match(/Inference:\s*(.*)/);
+              const confidenceMatch = block.match(/Confidence.*?:\s*(.*)/);
+
+              const tr = document.createElement("tr");
+              const td1 = document.createElement("td");
+              const td2 = document.createElement("td");
+              const td3 = document.createElement("td");
+              td1.textContent = dataPointMatch ? dataPointMatch[1].trim() : block;
+              td2.textContent = inferenceMatch ? inferenceMatch[1].trim() : "";
+              td3.textContent = confidenceMatch ? confidenceMatch[1].trim() : "";
+              tr.appendChild(td1);
+              tr.appendChild(td2);
+              tr.appendChild(td3);
+              tbody.appendChild(tr);
+            }
+            table.appendChild(tbody);
+            card.appendChild(table);
+          } else {
+            const blocks = section.body.split("\n- ").map((b, i) => (i === 0 ? b : "- " + b)).filter(Boolean);
+            const list = document.createElement("div");
+            list.className = "kv";
+            blocks.forEach((block) => {
+              const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+              if (lines.length === 0) return;
+              const first = lines[0].replace(/^- /, "");
+              const item = document.createElement("div");
+              const firstParts = first.split(":");
+              if (firstParts.length > 1) {
+                const key = firstParts.shift().trim();
+                const value = firstParts.join(":").trim();
+                item.innerHTML = `<strong>${key}:</strong> ${value}`;
+              } else {
+                item.textContent = first;
+              }
+              list.appendChild(item);
+
+              lines.slice(1).forEach((ln) => {
+                const sub = document.createElement("div");
+                const parts = ln.split(":");
+                if (parts.length > 1) {
+                  const key = parts.shift().trim();
+                  const value = parts.join(":").trim();
+                  sub.innerHTML = `<strong>${key}:</strong> ${value}`;
+                } else {
+                  sub.textContent = ln;
+                }
+                sub.style.marginLeft = "8px";
+                list.appendChild(sub);
+              });
+            });
+            card.appendChild(list);
+          }
+
+          container.appendChild(card);
+        });
+      }
+
+      function setOutput(out, text) {
+        const structured = out.querySelector(".structured");
+        const raw = out.querySelector(".raw");
+        if (raw) raw.textContent = text;
+        if (structured) renderStructured(text, structured);
+      }
+
+      async function streamEndpoint({ url, payload, status, out, button }) {
+        if (!payload || Object.values(payload)[0].trim() === "") {
+          setOutput(out, "Please enter a value.");
+          return;
+        }
+
+        button.disabled = true;
+        status.textContent = "Running...";
+        setOutput(out, "Thinking...");
+
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Backend error (${res.status}): ${errText}`);
+          }
+
+          if (!res.body) {
+            const text = await res.text();
+            setOutput(out, text || "(no result)");
+            status.textContent = "Done";
+            return;
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            setOutput(out, buffer);
+          }
+          status.textContent = "Done";
+        } catch (err) {
+          setOutput(out, String(err));
+          status.textContent = "Error";
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function scout() {
+        const text = goal.value.trim();
+        if (!text) {
+          setOutput(output, "Please enter a founder and company.");
+          return;
+        }
+
+        await streamEndpoint({
+          url: "/scout",
+          payload: { goal: text },
+          status: statusEl,
+          out: output,
+          button: runBtn
+        });
+      }
+
+      runBtn.addEventListener("click", scout);
+      monitorBtn.addEventListener("click", () => {
+        streamEndpoint({
+          url: "/monitor",
+          payload: { query: document.getElementById("monitorInput").value },
+          status: document.getElementById("monitorStatus"),
+          out: document.getElementById("monitorOutput"),
+          button: monitorBtn
+        });
+      });
+      trendBtn.addEventListener("click", () => {
+        streamEndpoint({
+          url: "/trend",
+          payload: { topic: document.getElementById("trendInput").value },
+          status: document.getElementById("trendStatus"),
+          out: document.getElementById("trendOutput"),
+          button: trendBtn
+        });
+      });
+      discoverBtn.addEventListener("click", () => {
+        streamEndpoint({
+          url: "/discover",
+          payload: { sector: document.getElementById("discoverInput").value },
+          status: document.getElementById("discoverStatus"),
+          out: document.getElementById("discoverOutput"),
+          button: discoverBtn
+        });
+      });
+      interviewBtn.addEventListener("click", () => {
+        streamEndpoint({
+          url: "/interview",
+          payload: { founder: document.getElementById("interviewInput").value },
+          status: document.getElementById("interviewStatus"),
+          out: document.getElementById("interviewOutput"),
+          button: interviewBtn
+        });
+      });
+      memoBtn.addEventListener("click", () => {
+        streamEndpoint({
+          url: "/memo",
+          payload: { company: document.getElementById("memoInput").value },
+          status: document.getElementById("memoStatus"),
+          out: document.getElementById("memoOutput"),
+          button: memoBtn
+        });
+      });
+    </script>
+  </body>
+</html>
