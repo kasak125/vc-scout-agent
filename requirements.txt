@@ -1,0 +1,8 @@
+crewai>=1.2.0
+crewai-tools>=1.2.0
+exa-py>=1.16.1
+pydantic>=2.12.3
+python-dotenv>=1.2.1
+fastapi
+uvicorn
+requests

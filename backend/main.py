@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi import HTTPException
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,8 +10,9 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from pathlib import Path
+import json
 
-from agent import (
+from .agent import (
     vc_scout,
     vc_scout_stream,
     monitor_platforms,
@@ -94,6 +96,22 @@ class MonitorRequest(BaseModel):
     query: str
 
 
+class SourceItem(BaseModel):
+
+    name: str
+    url: str
+    enabled: bool
+
+
+class SourcesPayload(BaseModel):
+
+    rss: list[SourceItem]
+    github: dict
+
+
+SOURCES_PATH = Path(__file__).resolve().parent / "sources.json"
+
+
 
 frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -117,7 +135,10 @@ if frontend_dir.is_dir():
 
 def scout(data: RequestData):
 
-    return StreamingResponse(vc_scout_stream(data.goal), media_type="text/plain")
+    try:
+        return StreamingResponse(vc_scout_stream(data.goal), media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Model error: {e}")
 
 
 
@@ -127,7 +148,10 @@ def scout(data: RequestData):
 
 def monitor(data: MonitorRequest):
 
-    return StreamingResponse(monitor_platforms_stream(data.query), media_type="text/plain")
+    try:
+        return StreamingResponse(monitor_platforms_stream(data.query), media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Monitor error: {e}")
 
 
 
@@ -137,7 +161,10 @@ def monitor(data: MonitorRequest):
 
 def trend(data: TopicRequest):
 
-    return StreamingResponse(trend_detection_stream(data.topic), media_type="text/plain")
+    try:
+        return StreamingResponse(trend_detection_stream(data.topic), media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Trend error: {e}")
 
 
 
@@ -147,18 +174,48 @@ def trend(data: TopicRequest):
 
 def discover(data: SectorRequest):
 
-    return StreamingResponse(startup_discovery_stream(data.sector), media_type="text/plain")
+    try:
+        return StreamingResponse(startup_discovery_stream(data.sector), media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Discover error: {e}")
 
 
 @app.post("/interview")
 
 def interview(data: FounderRequest):
 
-    return StreamingResponse(founder_interview_stream(data.founder), media_type="text/plain")
+    try:
+        return StreamingResponse(founder_interview_stream(data.founder), media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Interview error: {e}")
 
 
 @app.post("/memo")
 
 def memo(data: CompanyRequest):
 
-    return StreamingResponse(investment_memo_stream(data.company), media_type="text/plain")
+    try:
+        return StreamingResponse(investment_memo_stream(data.company), media_type="text/plain")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Memo error: {e}")
+
+
+@app.get("/sources")
+def get_sources():
+    if SOURCES_PATH.is_file():
+        return json.loads(SOURCES_PATH.read_text())
+    return {
+        "rss": [
+            {"name": "Hacker News", "url": "https://hnrss.org/frontpage", "enabled": True},
+            {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "enabled": True},
+            {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "enabled": True},
+        ],
+        "github": {"enabled": True},
+    }
+
+
+@app.post("/sources")
+def update_sources(payload: SourcesPayload):
+    data = payload.model_dump()
+    SOURCES_PATH.write_text(json.dumps(data, indent=2))
+    return {"ok": True}

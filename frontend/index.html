@@ -1,378 +1,218 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VC Scout Agent</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Space+Grotesk:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --ink: #0b0f1a;
-        --night: #0a0c14;
-        --navy: #101726;
-        --slate: #1e2a3a;
-        --mist: #c9d3e3;
-        --muted: #8fa3b8;
-        --lime: #b3ff3b;
-        --tangerine: #ffb454;
-        --rose: #f4747f;
-        --glass: rgba(20, 28, 44, 0.72);
-        --border: rgba(163, 185, 214, 0.18);
-        --shadow: 0 24px 60px rgba(2, 6, 23, 0.55);
+        --bg: #020617;
+        --panel: rgba(15, 23, 42, 0.7);
+        --border: #1E293B;
+        --text: #F8FAFC;
+        --secondary: #94A3B8;
+        --muted: #64748B;
+        --accent-green: #22C55E;
+        --accent-green-2: #4ADE80;
+        --accent-cyan: #22D3EE;
+        --accent-purple: #8B5CF6;
+        --glass-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        --card-glow: 0 0 20px rgba(34,211,238,0.05);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        color: var(--mist);
-        background:
-          radial-gradient(1000px 600px at 10% -10%, rgba(255, 180, 84, 0.25) 0%, transparent 55%),
-          radial-gradient(1200px 700px at 85% 10%, rgba(244, 116, 127, 0.2) 0%, transparent 60%),
-          linear-gradient(160deg, #0a0c14 0%, #0b1220 40%, #0d1426 100%);
+        font-family: "Inter", system-ui, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at center, #c85aa6 0%, #7b3fa3 30%, #5a2d91 50%, #3b1c63 70%, #0b0f3b 100%);
         min-height: 100vh;
         display: grid;
         place-items: center;
         padding: 28px;
       }
+      .noise {
+        pointer-events: none;
+        position: fixed;
+        inset: 0;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/></filter><rect width="120" height="120" filter="url(%23n)" opacity="0.35"/></svg>');
+        opacity: 0.03;
+        z-index: 0;
+      }
       .frame {
         width: min(1100px, 100%);
         display: grid;
         gap: 20px;
+        position: relative;
+        z-index: 1;
       }
       .panel {
-        background: var(--glass);
+        background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 22px;
+        border-radius: 14px;
         padding: 22px;
-        box-shadow: var(--shadow);
-        backdrop-filter: blur(16px);
+        box-shadow: var(--glass-shadow), var(--card-glow);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+        transition: transform 140ms ease, box-shadow 140ms ease;
       }
-      .brand {
+      .panel:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 22px rgba(34,211,238,0.08);
+      }
+      .topbar {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
       }
-      .badge {
-        align-self: flex-start;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(179, 255, 59, 0.14);
-        color: var(--lime);
-        font-size: 12px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-      h1 {
-        margin: 0;
-        font-family: "Fraunces", serif;
-        font-weight: 700;
+      .topbar-title {
         font-size: 32px;
-        color: #f8fafc;
-      }
-      .subtitle {
-        color: var(--muted);
-        line-height: 1.5;
-        font-size: 14px;
-      }
-      .stat {
-        display: grid;
-        gap: 6px;
-        margin-top: 18px;
-        padding: 12px;
-        background: rgba(16, 23, 38, 0.6);
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        font-size: 13px;
-      }
-      .stat strong {
-        color: #fef08a;
-        font-size: 18px;
-      }
-      .main {
-        display: grid;
-        gap: 18px;
-      }
-      .hero {
-        display: grid;
-        gap: 18px;
-      }
-      .hero-title {
-        font-family: "Fraunces", serif;
-        font-size: 34px;
         margin: 0;
-        color: #f8fafc;
-      }
-      .hero-link {
-        color: #e2f7ff;
-        text-decoration: none;
-        border-bottom: 2px solid rgba(178, 243, 255, 0.7);
-        padding-bottom: 2px;
-        font-weight: 600;
-        letter-spacing: 0.03em;
-      }
-      .how-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 18px;
-      }
-      .how-card {
-        padding: 14px 0 0;
-        border-top: 2px solid rgba(90, 231, 255, 0.65);
-      }
-      .how-card h3 {
-        margin: 0 0 6px;
-        font-size: 16px;
-        color: #f8fafc;
-      }
-      .how-card p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.5;
-      }
-      .impact {
-        display: grid;
-        gap: 16px;
-      }
-      .impact-title {
-        text-align: center;
-        font-size: 26px;
-        font-weight: 700;
-        color: #f8fafc;
-      }
-      .impact-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 18px;
-      }
-      .impact-card {
-        border-radius: 18px;
-        border: 1px solid var(--border);
-        background: rgba(8, 13, 24, 0.9);
-        padding: 16px;
-      }
-      .impact-number {
-        font-size: 36px;
-        font-weight: 700;
-        color: #f8fafc;
-        margin: 0 0 6px;
-      }
-      .impact-subtitle {
-        font-size: 14px;
-        color: var(--muted);
-        margin: 0 0 12px;
-      }
-      .impact-list {
-        margin: 0;
-        padding-left: 18px;
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.6;
-      }
-      label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted);
-      }
-      textarea {
-        width: 100%;
-        min-height: 120px;
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        background: rgba(8, 13, 24, 0.9);
-        color: #e2e8f0;
-        padding: 14px 16px;
-        font-size: 15px;
-        resize: vertical;
-      }
-      .controls {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        flex-wrap: wrap;
-      }
-      button {
-        background: linear-gradient(135deg, var(--lime), #66ffcb);
-        color: #042b1c;
-        border: none;
-        border-radius: 14px;
-        padding: 12px 18px;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 12px 30px rgba(102, 255, 203, 0.25);
-      }
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .status {
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .output {
-        border-radius: 18px;
-        border: 1px solid var(--border);
-        background: rgba(8, 13, 24, 0.9);
-        padding: 18px;
-        min-height: 220px;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-      .structured {
-        display: grid;
-        gap: 12px;
-      }
-      .section-card {
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        background: rgba(12, 18, 30, 0.9);
-        padding: 12px;
-      }
-      .section-card h4 {
-        margin: 0 0 8px;
-        font-size: 14px;
-        color: #f8fafc;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-        color: var(--mist);
-      }
-      th, td {
-        text-align: left;
-        padding: 8px;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-        vertical-align: top;
-      }
-      th {
-        color: #e2e8f0;
-        font-weight: 600;
-      }
-      .kv {
-        display: grid;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--mist);
-      }
-      .kv strong {
-        color: #e2e8f0;
-      }
-      .raw {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px dashed rgba(148, 163, 184, 0.25);
-        white-space: pre-wrap;
-        font-size: 12px;
-        color: var(--muted);
-      }
-      .features {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-      }
-      .feature-card {
-        border-radius: 18px;
-        border: 1px solid var(--border);
-        background: rgba(10, 16, 28, 0.85);
-        padding: 16px;
-        display: grid;
-        gap: 10px;
-      }
-      .feature-title {
-        font-weight: 700;
-        color: #f8fafc;
-      }
-      .feature-desc {
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .feature-output {
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: rgba(8, 13, 24, 0.9);
-        padding: 12px;
-        min-height: 120px;
-        white-space: pre-wrap;
-        word-break: break-word;
-        font-size: 13px;
-      }
-      .feature-input {
-        width: 100%;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: rgba(8, 13, 24, 0.9);
-        color: #e2e8f0;
-        padding: 10px 12px;
-        font-size: 14px;
-      }
-      .feature-actions {
-        display: flex;
+        background: linear-gradient(90deg, #22D3EE, #8B5CF6);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        display: inline-flex;
         gap: 10px;
         align-items: center;
       }
-      .ghost {
-        background: transparent;
-        border: 1px solid rgba(179, 255, 59, 0.5);
-        color: var(--lime);
-        box-shadow: none;
-      }
-      .chips {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-      }
-      .chip {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: rgba(255, 180, 84, 0.12);
-        color: var(--tangerine);
-        font-size: 12px;
-      }
-      .chip.secondary {
-        background: rgba(244, 116, 127, 0.12);
-        color: var(--rose);
-      }
-      @media (max-width: 860px) {
-        .frame { grid-template-columns: 1fr; }
-        .how-grid { grid-template-columns: 1fr; }
-        .impact-grid { grid-template-columns: 1fr; }
-        .features {
-          grid-template-columns: 1fr;
-        }
-      }
+      .topbar-desc { color: var(--secondary); font-size: 14px; margin-top: 4px; }
+      .topbar-actions { display: flex; gap: 10px; align-items: center; }
+      .section-title { font-size: 20px; color: var(--accent-purple); letter-spacing: 0.2em; text-transform: uppercase; margin: 4px 0 10px; }
+      .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--secondary); }
+      .toggle input { width: 18px; height: 18px; accent-color: var(--accent-cyan); }
+      .version-tag { padding: 6px 10px; border-radius: 999px; background: #1E293B; color: var(--accent-cyan); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .badge-rss { background: #1E293B; color: var(--accent-cyan); }
+      .badge-api { background: #1E293B; color: var(--accent-purple); }
+      label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+      textarea { width: 100%; min-height: 120px; border-radius: 12px; border: 1px solid var(--border); background: #020617; color: var(--text); padding: 14px; font-size: 14px; resize: vertical; outline: none; }
+      textarea:focus, .feature-input:focus { border-color: var(--accent-cyan); box-shadow: 0 0 0 2px #22D3EE55; }
+      .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      button { background: linear-gradient(135deg, var(--accent-green), var(--accent-green-2)); color: #052e16; border: none; border-radius: 10px; padding: 12px 18px; font-weight: 700; cursor: pointer; box-shadow: 0 0 15px #22C55E55; transition: transform 120ms ease, box-shadow 120ms ease; }
+      button:hover { transform: translateY(-1px); box-shadow: 0 0 15px #22C55E88; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .ghost { background: transparent; border: 1px solid var(--accent-cyan); color: var(--accent-cyan); box-shadow: none; }
+      .ghost:hover { background: rgba(34, 211, 238, 0.08); transform: translateY(-1px); }
+      .status { font-size: 12px; color: var(--secondary); }
+      .output { border-radius: 12px; border: 1px solid var(--border); background: #020617; padding: 18px; min-height: 220px; white-space: pre-wrap; word-break: break-word; }
+      .structured { display: grid; gap: 12px; }
+      .section-card { border-radius: 12px; border: 1px solid var(--border); background: #0F172A; padding: 12px; }
+      .section-card h4 { margin: 0 0 8px; font-size: 14px; color: var(--accent-purple); text-transform: uppercase; letter-spacing: 0.08em; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--secondary); }
+      th, td { text-align: left; padding: 8px; border-bottom: 1px solid rgba(148, 163, 184, 0.2); vertical-align: top; }
+      th { color: var(--text); font-weight: 600; }
+      .kv { display: grid; gap: 6px; font-size: 12px; color: var(--secondary); }
+      .kv strong { color: var(--text); }
+      .raw { margin-top: 12px; padding-top: 12px; border-top: 1px dashed rgba(148, 163, 184, 0.25); white-space: pre-wrap; font-size: 12px; color: var(--muted); }
+      .raw.hidden { display: none; }
+      .features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .feature-card { border-radius: 12px; border: 1px solid var(--border); background: #0F172A; padding: 16px; display: grid; gap: 10px; transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease; }
+      .feature-card:hover { transform: translateY(-2px); border-color: var(--accent-cyan); box-shadow: 0 16px 34px rgba(2, 6, 23, 0.45); }
+      .feature-title { font-weight: 700; color: var(--text); }
+      .feature-desc { font-size: 13px; color: var(--secondary); }
+      .feature-output { border-radius: 12px; border: 1px solid var(--border); background: #020617; padding: 12px; min-height: 120px; white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+      .feature-input { width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #020617; color: var(--text); padding: 14px; font-size: 14px; outline: none; }
+      .feature-actions { display: flex; gap: 10px; align-items: center; }
+      .sources { display: grid; gap: 12px; margin-bottom: 18px; }
+      .source-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: #0F172A; }
+      .source-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-green); }
+      .source-name { font-weight: 600; color: var(--text); }
+      .source-url { font-size: 12px; color: var(--secondary); }
+      .icon { width: 22px; height: 22px; display: inline-block; vertical-align: -3px; margin-right: 8px; }
+      .icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+      .icon.cyan { color: var(--accent-cyan); }
+      .icon.purple { color: var(--accent-purple); }
+      .icon.green { color: var(--accent-green); }
+      .icon.orange { color: #FF6600; }
+      .icon.rocket { color: #00FF66; }
+      .icon.verge { color: #A855F7; }
+      .icon.github { color: #FFFFFF; }
+      .shimmer { position: relative; overflow: hidden; }
+      .shimmer::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #0F172A 0%, #1E293B 50%, #0F172A 100%); animation: shimmer 1.5s infinite; opacity: 0.6; }
+      @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+      @media (max-width: 860px) { .frame { grid-template-columns: 1fr; } .features { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
+    <div class="noise"></div>
     <div class="frame">
+      <section class="panel">
+        <div class="topbar">
+          <div>
+            <h1 class="topbar-title">
+              <span class="icon purple">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3v6l4 2"/><path d="M3 12h6"/><path d="M15 21v-6l4-2"/></svg>
+              </span>
+              VC Scout Agent
+            </h1>
+            <div class="topbar-desc">Live monitoring, structured analysis, and streaming results.</div>
+          </div>
+          <div class="topbar-actions">
+            <label class="toggle">
+              <input id="toggleRaw" type="checkbox" checked />
+              Show raw text
+            </label>
+            <span class="version-tag">UI v2</span>
+            <button id="clearAll" class="ghost">
+              <span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6l-12 12"/></svg></span>
+              Clear All
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="topbar">
+          <div>
+            <h1 class="topbar-title">Data Sources</h1>
+            <div class="topbar-desc">Enable or disable feeds and tools the agent uses.</div>
+          </div>
+          <div class="topbar-actions">
+            <button id="saveSources">
+              <span class="icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
+              Save Sources
+            </button>
+          </div>
+        </div>
+        <div class="sources" id="sourcesList"></div>
+      </section>
+
       <section class="panel main">
+        <div class="section-title">Core Analysis</div>
         <div>
           <label for="goal">Founder + company</label>
           <textarea id="goal" placeholder="Sam Altman, OpenAI">Sam Altman, OpenAI</textarea>
         </div>
         <div class="controls">
-          <button id="run">Scout</button>
-          <span class="status">Results will appear below.</span>
+          <button id="run">
+            <span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
+            Scout
+          </button>
+          <span class="status" id="status">Idle</span>
         </div>
         <div class="output" id="output">
           <div class="structured"></div>
           <div class="raw">Result will appear here.</div>
         </div>
 
+        <div class="section-title">Feature Lab</div>
         <div class="features">
           <div class="feature-card">
-            <div class="feature-title">Monitor Platforms</div>
+            <div class="feature-title">
+              <span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16"/><path d="M6 17V7"/><path d="M12 17V4"/><path d="M18 17v-6"/></svg></span>
+              Monitor Platforms
+            </div>
             <div class="feature-desc">Scan tech platforms and summarize live signals.</div>
+            <div class="feature-desc">Scoring weights: Source +0.6, GitHub stars up to +2.0, Query match +0.3 per term.</div>
             <input id="monitorInput" class="feature-input" placeholder="e.g., AI agents, climate tech" />
             <div class="feature-actions">
-              <button id="monitorBtn" class="ghost">Run</button>
+              <button id="monitorBtn" class="ghost">
+                <span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
+                Run
+              </button>
               <span class="status" id="monitorStatus">Idle</span>
             </div>
             <div class="feature-output" id="monitorOutput">
@@ -380,12 +220,16 @@
               <div class="raw">Monitoring results will appear here.</div>
             </div>
           </div>
+
           <div class="feature-card">
-            <div class="feature-title">Trend Detection</div>
+            <div class="feature-title">
+              <span class="icon green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14l5-5 4 4 7-7"/><path d="M20 7v6h-6"/></svg></span>
+              Trend Detection
+            </div>
             <div class="feature-desc">Identify emerging technologies and why they matter now.</div>
             <input id="trendInput" class="feature-input" placeholder="e.g., AI in healthcare" />
             <div class="feature-actions">
-              <button id="trendBtn" class="ghost">Run</button>
+              <button id="trendBtn" class="ghost"><span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>Run</button>
               <span class="status" id="trendStatus">Idle</span>
             </div>
             <div class="feature-output" id="trendOutput">
@@ -395,11 +239,14 @@
           </div>
 
           <div class="feature-card">
-            <div class="feature-title">Startup Discovery</div>
+            <div class="feature-title">
+              <span class="icon purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg></span>
+              Startup Discovery
+            </div>
             <div class="feature-desc">Generate promising startup concepts by sector.</div>
             <input id="discoverInput" class="feature-input" placeholder="e.g., ClimateTech SaaS" />
             <div class="feature-actions">
-              <button id="discoverBtn" class="ghost">Run</button>
+              <button id="discoverBtn" class="ghost"><span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>Run</button>
               <span class="status" id="discoverStatus">Idle</span>
             </div>
             <div class="feature-output" id="discoverOutput">
@@ -409,11 +256,14 @@
           </div>
 
           <div class="feature-card">
-            <div class="feature-title">Founder Interview</div>
+            <div class="feature-title">
+              <span class="icon purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 18a4 4 0 1 1 8 0"/><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4z"/></svg></span>
+              Founder Interview
+            </div>
             <div class="feature-desc">Simulate a sharp VC-style interview with a founder.</div>
             <input id="interviewInput" class="feature-input" placeholder="e.g., Jane Doe, Acme AI" />
             <div class="feature-actions">
-              <button id="interviewBtn" class="ghost">Run</button>
+              <button id="interviewBtn" class="ghost"><span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>Run</button>
               <span class="status" id="interviewStatus">Idle</span>
             </div>
             <div class="feature-output" id="interviewOutput">
@@ -423,11 +273,14 @@
           </div>
 
           <div class="feature-card">
-            <div class="feature-title">Investment Memo</div>
+            <div class="feature-title">
+              <span class="icon purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h4"/></svg></span>
+              Investment Memo
+            </div>
             <div class="feature-desc">Generate a VC-style memo with risks and recommendation.</div>
             <input id="memoInput" class="feature-input" placeholder="e.g., OpenAI, Sam Altman" />
             <div class="feature-actions">
-              <button id="memoBtn" class="ghost">Run</button>
+              <button id="memoBtn" class="ghost"><span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>Run</button>
               <span class="status" id="memoStatus">Idle</span>
             </div>
             <div class="feature-output" id="memoOutput">
@@ -438,8 +291,11 @@
         </div>
       </section>
     </div>
-
     <script>
+      const toggleRaw = document.getElementById("toggleRaw");
+      const sourcesList = document.getElementById("sourcesList");
+      const saveSourcesBtn = document.getElementById("saveSources");
+      const clearAllBtn = document.getElementById("clearAll");
       const runBtn = document.getElementById("run");
       const goal = document.getElementById("goal");
       const statusEl = document.getElementById("status");
@@ -449,6 +305,13 @@
       const interviewBtn = document.getElementById("interviewBtn");
       const memoBtn = document.getElementById("memoBtn");
       const monitorBtn = document.getElementById("monitorBtn");
+
+      const iconMap = {
+        "Hacker News": { cls: "orange", svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14"/><path d="M5 12h14"/><path d="M5 18h14"/></svg>' },
+        "TechCrunch": { cls: "rocket", svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l4 4-6 6-4-4z"/><path d="M6 14l-2 6 6-2"/></svg>' },
+        "The Verge": { cls: "verge", svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18"/><path d="M6 6l12 12"/><path d="M6 18l12-12"/></svg>' },
+        "GitHub Search": { cls: "github", svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3 19"/><path d="M12 2a10 10 0 0 1 3 19"/><path d="M8 20v-4"/><path d="M16 20v-4"/></svg>' }
+      };
 
       function renderStructured(text, container) {
         container.innerHTML = "";
@@ -558,6 +421,12 @@
         const raw = out.querySelector(".raw");
         if (raw) raw.textContent = text;
         if (structured) renderStructured(text, structured);
+        if (raw && toggleRaw && !toggleRaw.checked) raw.classList.add("hidden");
+        if (text === "Thinking...") {
+          out.classList.add("shimmer");
+        } else {
+          out.classList.remove("shimmer");
+        }
       }
 
       async function streamEndpoint({ url, payload, status, out, button }) {
@@ -607,6 +476,118 @@
         }
       }
 
+      function resetOutputs() {
+        setOutput(output, "Result will appear here.");
+        setOutput(document.getElementById("monitorOutput"), "Monitoring results will appear here.");
+        setOutput(document.getElementById("trendOutput"), "Trend results will appear here.");
+        setOutput(document.getElementById("discoverOutput"), "Discovery results will appear here.");
+        setOutput(document.getElementById("interviewOutput"), "Interview questions will appear here.");
+        setOutput(document.getElementById("memoOutput"), "Memo will appear here.");
+
+        const statuses = [
+          "monitorStatus",
+          "trendStatus",
+          "discoverStatus",
+          "interviewStatus",
+          "memoStatus",
+          "status"
+        ];
+        statuses.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "Idle";
+        });
+      }
+
+      async function loadSources() {
+        try {
+          const res = await fetch("/sources");
+          const data = await res.json();
+          renderSources(data);
+        } catch (err) {
+          sourcesList.textContent = "Failed to load sources.";
+        }
+      }
+
+      function renderSources(data) {
+        sourcesList.innerHTML = "";
+        const rss = data.rss || [];
+        rss.forEach((src, idx) => {
+          const row = document.createElement("div");
+          row.className = "source-row";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = !!src.enabled;
+          checkbox.dataset.type = "rss";
+          checkbox.dataset.index = String(idx);
+
+          const icon = iconMap[src.name] || { cls: "cyan", svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16"/><path d="M6 17V7"/><path d="M12 17V4"/><path d="M18 17v-6"/></svg>' };
+          const label = document.createElement("div");
+          label.innerHTML = `<div class="source-name"><span class="icon ${icon.cls}">${icon.svg}</span>${src.name}</div><div class="source-url">${src.url}</div>`;
+
+          const badge = document.createElement("div");
+          badge.className = "version-tag badge-rss";
+          badge.textContent = "RSS";
+
+          row.appendChild(checkbox);
+          row.appendChild(label);
+          row.appendChild(badge);
+          sourcesList.appendChild(row);
+        });
+
+        const ghRow = document.createElement("div");
+        ghRow.className = "source-row";
+        const ghCheckbox = document.createElement("input");
+        ghCheckbox.type = "checkbox";
+        ghCheckbox.checked = !!(data.github && data.github.enabled);
+        ghCheckbox.dataset.type = "github";
+        const ghLabel = document.createElement("div");
+        const ghIcon = iconMap["GitHub Search"];
+        ghLabel.innerHTML = `<div class="source-name"><span class="icon ${ghIcon.cls}">${ghIcon.svg}</span>GitHub Search</div><div class="source-url">https://api.github.com/search/repositories</div>`;
+        const ghBadge = document.createElement("div");
+        ghBadge.className = "version-tag badge-api";
+        ghBadge.textContent = "API";
+        ghRow.appendChild(ghCheckbox);
+        ghRow.appendChild(ghLabel);
+        ghRow.appendChild(ghBadge);
+        sourcesList.appendChild(ghRow);
+      }
+
+      async function saveSources() {
+        const rows = Array.from(sourcesList.querySelectorAll(".source-row"));
+        const payload = { rss: [], github: { enabled: true } };
+
+        rows.forEach((row) => {
+          const checkbox = row.querySelector('input[type="checkbox"]');
+          const nameEl = row.querySelector(".source-name");
+          const url = row.querySelector(".source-url");
+          const type = checkbox.dataset.type;
+          if (type === "rss") {
+            payload.rss.push({
+              name: nameEl.textContent.trim(),
+              url: url.textContent,
+              enabled: checkbox.checked
+            });
+          } else if (type === "github") {
+            payload.github.enabled = checkbox.checked;
+          }
+        });
+
+        try {
+          const res = await fetch("/sources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error("Save failed");
+          saveSourcesBtn.textContent = "Saved";
+          setTimeout(() => (saveSourcesBtn.textContent = "Save Sources"), 1200);
+        } catch (err) {
+          saveSourcesBtn.textContent = "Error";
+          setTimeout(() => (saveSourcesBtn.textContent = "Save Sources"), 1200);
+        }
+      }
+
       async function scout() {
         const text = goal.value.trim();
         if (!text) {
@@ -624,6 +605,18 @@
       }
 
       runBtn.addEventListener("click", scout);
+      saveSourcesBtn.addEventListener("click", saveSources);
+      clearAllBtn.addEventListener("click", resetOutputs);
+      toggleRaw.addEventListener("change", () => {
+        document.querySelectorAll(".raw").forEach((el) => {
+          if (toggleRaw.checked) {
+            el.classList.remove("hidden");
+          } else {
+            el.classList.add("hidden");
+          }
+        });
+      });
+
       monitorBtn.addEventListener("click", () => {
         streamEndpoint({
           url: "/monitor",
@@ -669,6 +662,8 @@
           button: memoBtn
         });
       });
+
+      loadSources();
     </script>
   </body>
 </html>

@@ -1,47 +1,88 @@
 import requests
 import json
+import re
+import time
 from typing import Iterable
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "llama3"
+SOURCES_PATH = Path(__file__).resolve().parent / "sources.json"
+REQUEST_TIMEOUT = 30
+RETRY_COUNT = 2
+RETRY_BACKOFF = 1.0
+
+
+def _load_sources() -> Dict:
+    try:
+        return json.loads(SOURCES_PATH.read_text())
+    except Exception:
+        return {
+            "rss": [
+                {"name": "Hacker News", "url": "https://hnrss.org/frontpage", "enabled": True},
+                {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "enabled": True},
+                {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "enabled": True},
+            ],
+            "github": {"enabled": True},
+        }
+
+
+def _post_with_retry(payload: Dict) -> requests.Response:
+    last_err = None
+    for attempt in range(RETRY_COUNT + 1):
+        try:
+            resp = requests.post(
+                OLLAMA_URL,
+                json=payload,
+                stream=True,
+                timeout=REQUEST_TIMEOUT
+            )
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            last_err = e
+            if attempt < RETRY_COUNT:
+                time.sleep(RETRY_BACKOFF * (attempt + 1))
+                continue
+            raise last_err
 
 
 def _llama_generate(prompt: str) -> str:
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL_NAME,
-            "prompt": prompt
-        },
-        stream=True
-    )
+    response = _post_with_retry({
+        "model": MODEL_NAME,
+        "prompt": prompt
+    })
 
     result = ""
     for line in response.iter_lines():
-        if line:
+        if not line:
+            continue
+        try:
             data = json.loads(line.decode("utf-8"))
-            result += data.get("response", "")
+        except Exception:
+            continue
+        result += data.get("response", "")
 
     return result.strip()
 
 def _llama_stream(prompt: str) -> Iterable[str]:
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL_NAME,
-            "prompt": prompt
-        },
-        stream=True
-    )
+    response = _post_with_retry({
+        "model": MODEL_NAME,
+        "prompt": prompt
+    })
 
     for line in response.iter_lines():
-        if line:
+        if not line:
+            continue
+        try:
             data = json.loads(line.decode("utf-8"))
-            chunk = data.get("response", "")
-            if chunk:
-                yield chunk
+        except Exception:
+            continue
+        chunk = data.get("response", "")
+        if chunk:
+            yield chunk
 
 
 def vc_scout(goal: str) -> str:
@@ -283,31 +324,128 @@ def _github_search(query: str, limit: int = 5) -> List[Dict[str, str]]:
             items.append({
                 "title": f"{repo.get('full_name', '').strip()} (★ {repo.get('stargazers_count', 0)})",
                 "link": repo.get("html_url", "").strip(),
+                "stars": repo.get("stargazers_count", 0),
             })
         return items
     except Exception:
         return []
 
 
+def _strip_html(text: str) -> str:
+    text = re.sub(r"<script[\s\S]*?</script>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _fetch_page_text(url: str, max_chars: int = 2000) -> str:
+    try:
+        resp = requests.get(url, timeout=10, headers={"User-Agent": "VC-Scout-Agent/1.0"})
+        resp.raise_for_status()
+        text = _strip_html(resp.text)
+        return text[:max_chars]
+    except Exception:
+        return ""
+
+
+def _extract_links(html: str, limit: int = 3) -> List[str]:
+    links = re.findall(r'href=["\'](https?://[^"\']+)["\']', html, flags=re.IGNORECASE)
+    deduped = []
+    seen = set()
+    for link in links:
+        if link in seen:
+            continue
+        seen.add(link)
+        deduped.append(link)
+        if len(deduped) >= limit:
+            break
+    return deduped
+
+
+def _score_items(items: List[Dict[str, str]], query: str) -> List[Tuple[Dict[str, str], float]]:
+    q_terms = [t.lower() for t in re.split(r"\W+", query) if t.strip()]
+    scored = []
+    for it in items:
+        title = (it.get("title") or "").lower()
+        source = it.get("source", "")
+        stars = it.get("stars", 0) or 0
+        score = 0.0
+        if source == "GitHub":
+            score += min(stars / 5000.0, 2.0)
+        if source in ("Hacker News", "TechCrunch", "The Verge"):
+            score += 0.6
+        for term in q_terms:
+            if term and term in title:
+                score += 0.3
+        scored.append((it, score))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    return scored
+
+
+def _forage_links(items: List[Dict[str, str]], max_items: int = 4, hop2_links: int = 2) -> List[Dict[str, str]]:
+    findings = []
+    for it in items[:max_items]:
+        link = it.get("link", "")
+        if not link:
+            continue
+        # Hop 1: fetch page text
+        page_text = _fetch_page_text(link, max_chars=1500)
+        if page_text:
+            findings.append({"source": "hop1", "link": link, "snippet": page_text})
+        # Hop 2: follow a couple of links from the page (best effort)
+        try:
+            resp = requests.get(link, timeout=10, headers={"User-Agent": "VC-Scout-Agent/1.0"})
+            resp.raise_for_status()
+            next_links = _extract_links(resp.text, limit=hop2_links)
+            for l2 in next_links:
+                text2 = _fetch_page_text(l2, max_chars=800)
+                if text2:
+                    findings.append({"source": "hop2", "link": l2, "snippet": text2})
+        except Exception:
+            continue
+    return findings
+
+
 def monitor_platforms(query: str) -> str:
-    sources = {
-        "Hacker News": "https://hnrss.org/frontpage",
-        "TechCrunch": "https://techcrunch.com/feed/",
-        "The Verge": "https://www.theverge.com/rss/index.xml",
-    }
+    config = _load_sources()
+    sources = {s["name"]: s["url"] for s in config.get("rss", []) if s.get("enabled")}
 
     collected = []
     for name, url in sources.items():
         items = _fetch_rss(url, limit=4)
         for it in items:
-            collected.append(f"[{name}] {it['title']} - {it['link']}")
+            collected.append({
+                "source": name,
+                "title": it["title"],
+                "link": it["link"],
+            })
 
-    gh_items = _github_search(query, limit=5)
-    for it in gh_items:
-        collected.append(f"[GitHub] {it['title']} - {it['link']}")
+    if config.get("github", {}).get("enabled", True):
+        gh_items = _github_search(query, limit=5)
+        for it in gh_items:
+            collected.append({
+                "source": "GitHub",
+                "title": it["title"],
+                "link": it["link"],
+                "stars": it.get("stars", 0),
+            })
 
     if not collected:
         return "No live items found. Check your internet connection."
+
+    scored = _score_items(collected, query)
+    top_items = [it for it, _ in scored[:8]]
+    forage = _forage_links(top_items, max_items=4, hop2_links=2)
+
+    scored_block = "\n".join(
+        f"[{it.get('source')}] {it.get('title')} - {it.get('link')} (score: {score:.2f})"
+        for it, score in scored
+    )
+    forage_block = "\n".join(
+        f"[{f['source']}] {f['link']} :: {f['snippet'][:300]}"
+        for f in forage
+    )
 
     prompt = (
         "You are a VC analyst monitoring platforms. Based on the live items below, "
@@ -323,32 +461,54 @@ def monitor_platforms(query: str) -> str:
         "  Why It Matters: <brief>\n"
         "  Opportunity: <actionable idea>\n"
         "(Provide 3-5 signals)\n\n"
-        "LIVE ITEMS:\n"
-        + "\n".join(collected)
+        "LIVE ITEMS (ranked):\n"
+        + scored_block
+        + "\n\nFOLLOWED LINKS (multi-hop findings):\n"
+        + (forage_block or "No additional links fetched.")
     )
     return _llama_generate(prompt)
 
 
 def monitor_platforms_stream(query: str) -> Iterable[str]:
-    sources = {
-        "Hacker News": "https://hnrss.org/frontpage",
-        "TechCrunch": "https://techcrunch.com/feed/",
-        "The Verge": "https://www.theverge.com/rss/index.xml",
-    }
+    config = _load_sources()
+    sources = {s["name"]: s["url"] for s in config.get("rss", []) if s.get("enabled")}
 
     collected = []
     for name, url in sources.items():
         items = _fetch_rss(url, limit=4)
         for it in items:
-            collected.append(f"[{name}] {it['title']} - {it['link']}")
+            collected.append({
+                "source": name,
+                "title": it["title"],
+                "link": it["link"],
+            })
 
-    gh_items = _github_search(query, limit=5)
-    for it in gh_items:
-        collected.append(f"[GitHub] {it['title']} - {it['link']}")
+    if config.get("github", {}).get("enabled", True):
+        gh_items = _github_search(query, limit=5)
+        for it in gh_items:
+            collected.append({
+                "source": "GitHub",
+                "title": it["title"],
+                "link": it["link"],
+                "stars": it.get("stars", 0),
+            })
 
     if not collected:
         yield "No live items found. Check your internet connection."
         return
+
+    scored = _score_items(collected, query)
+    top_items = [it for it, _ in scored[:8]]
+    forage = _forage_links(top_items, max_items=4, hop2_links=2)
+
+    scored_block = "\n".join(
+        f"[{it.get('source')}] {it.get('title')} - {it.get('link')} (score: {score:.2f})"
+        for it, score in scored
+    )
+    forage_block = "\n".join(
+        f"[{f['source']}] {f['link']} :: {f['snippet'][:300]}"
+        for f in forage
+    )
 
     prompt = (
         "You are a VC analyst monitoring platforms. Based on the live items below, "
@@ -364,7 +524,9 @@ def monitor_platforms_stream(query: str) -> Iterable[str]:
         "  Why It Matters: <brief>\n"
         "  Opportunity: <actionable idea>\n"
         "(Provide 3-5 signals)\n\n"
-        "LIVE ITEMS:\n"
-        + "\n".join(collected)
+        "LIVE ITEMS (ranked):\n"
+        + scored_block
+        + "\n\nFOLLOWED LINKS (multi-hop findings):\n"
+        + (forage_block or "No additional links fetched.")
     )
     yield from _llama_stream(prompt)
