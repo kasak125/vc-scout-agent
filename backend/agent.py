@@ -2,17 +2,22 @@ import requests
 import json
 import re
 import time
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Iterable
 from typing import List, Dict, Tuple
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from requests.exceptions import ReadTimeout
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "llama3"
+MODEL_NAME = os.getenv("OLLAMA_MODEL", "llama3")
+FALLBACK_MODEL = os.getenv("OLLAMA_FALLBACK_MODEL", "")
 SOURCES_PATH = Path(__file__).resolve().parent / "sources.json"
-REQUEST_TIMEOUT = 30
-RETRY_COUNT = 2
-RETRY_BACKOFF = 1.0
+REQUEST_TIMEOUT = 60
+RETRY_COUNT = 1
+RETRY_BACKOFF = 0.8
+SPAM_THRESHOLD = 50
 
 
 def _load_sources() -> Dict:
@@ -29,7 +34,72 @@ def _load_sources() -> Dict:
         }
 
 
-def _post_with_retry(payload: Dict) -> requests.Response:
+def spam_score(text: str) -> Tuple[int, List[str]]:
+    score = 0
+    reasons: List[str] = []
+    lower = text.lower()
+
+    url_hits = len(re.findall(r"https?://", lower))
+    if url_hits >= 2:
+        score += 35
+        reasons.append("multiple links")
+    if url_hits >= 4:
+        score += 25
+
+    spam_phrases = [
+        "free money", "guaranteed", "act now", "limited time", "urgent",
+        "crypto airdrop", "giveaway", "win big", "risk free", "double your",
+    ]
+    if any(p in lower for p in spam_phrases):
+        score += 30
+        reasons.append("spammy phrases")
+
+    if re.search(r"(.)\1{6,}", text):
+        score += 20
+        reasons.append("excessive repeated characters")
+
+    if re.search(r"[!$]{6,}", text):
+        score += 20
+        reasons.append("excessive symbols")
+
+    if re.search(r"[\U0001F300-\U0001FAFF]{3,}", text):
+        score += 15
+        reasons.append("emoji spam")
+
+    if len(text) > 1200:
+        score += 10
+        reasons.append("very long input")
+
+    letters = re.findall(r"[A-Za-z]", text)
+    if letters:
+        upper_ratio = sum(1 for c in letters if c.isupper()) / len(letters)
+        if upper_ratio > 0.6:
+            score += 15
+            reasons.append("excessive caps")
+
+    injection_patterns = [
+        "ignore previous instructions",
+        "system prompt",
+        "developer message",
+        "you are chatgpt",
+        "disregard above",
+        "reveal hidden",
+        "bypass safety",
+        "jailbreak",
+        "act as",
+        "do anything now",
+        "prompt injection",
+    ]
+    if any(p in lower for p in injection_patterns):
+        score += 25
+        reasons.append("prompt injection pattern")
+
+    # Cap score
+    score = min(score, 100)
+    return score, reasons
+
+
+def _post_with_retry(payload: Dict, model_name: str) -> requests.Response:
     last_err = None
     for attempt in range(RETRY_COUNT + 1):
         try:
@@ -46,6 +116,8 @@ def _post_with_retry(payload: Dict) -> requests.Response:
             if attempt < RETRY_COUNT:
                 time.sleep(RETRY_BACKOFF * (attempt + 1))
                 continue
+            if isinstance(e, ReadTimeout) and FALLBACK_MODEL and model_name == MODEL_NAME:
+                return _post_with_retry({**payload, "model": FALLBACK_MODEL}, FALLBACK_MODEL)
             raise last_err
 
 
@@ -53,7 +125,7 @@ def _llama_generate(prompt: str) -> str:
     response = _post_with_retry({
         "model": MODEL_NAME,
         "prompt": prompt
-    })
+    }, MODEL_NAME)
 
     result = ""
     for line in response.iter_lines():
@@ -71,7 +143,7 @@ def _llama_stream(prompt: str) -> Iterable[str]:
     response = _post_with_retry({
         "model": MODEL_NAME,
         "prompt": prompt
-    })
+    }, MODEL_NAME)
 
     for line in response.iter_lines():
         if not line:
@@ -289,7 +361,7 @@ def investment_memo_stream(company: str) -> Iterable[str]:
     return _llama_stream(prompt)
 
 
-def _fetch_rss(url: str, limit: int = 5) -> List[Dict[str, str]]:
+def _fetch_rss(url: str, limit: int = 3) -> List[Dict[str, str]]:
     try:
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
@@ -307,7 +379,7 @@ def _fetch_rss(url: str, limit: int = 5) -> List[Dict[str, str]]:
         return []
 
 
-def _github_search(query: str, limit: int = 5) -> List[Dict[str, str]]:
+def _github_search(query: str, limit: int = 3) -> List[Dict[str, str]]:
     try:
         url = "https://api.github.com/search/repositories"
         params = {
@@ -363,6 +435,12 @@ def _extract_links(html: str, limit: int = 3) -> List[str]:
     return deduped
 
 
+def _truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "..."
+
+
 def _score_items(items: List[Dict[str, str]], query: str) -> List[Tuple[Dict[str, str], float]]:
     q_terms = [t.lower() for t in re.split(r"\W+", query) if t.strip()]
     scored = []
@@ -383,7 +461,7 @@ def _score_items(items: List[Dict[str, str]], query: str) -> List[Tuple[Dict[str
     return scored
 
 
-def _forage_links(items: List[Dict[str, str]], max_items: int = 4, hop2_links: int = 2) -> List[Dict[str, str]]:
+def _forage_links(items: List[Dict[str, str]], max_items: int = 2, hop2_links: int = 1) -> List[Dict[str, str]]:
     findings = []
     for it in items[:max_items]:
         link = it.get("link", "")
@@ -412,17 +490,21 @@ def monitor_platforms(query: str) -> str:
     sources = {s["name"]: s["url"] for s in config.get("rss", []) if s.get("enabled")}
 
     collected = []
-    for name, url in sources.items():
-        items = _fetch_rss(url, limit=4)
-        for it in items:
-            collected.append({
-                "source": name,
-                "title": it["title"],
-                "link": it["link"],
-            })
+    if sources:
+        with ThreadPoolExecutor(max_workers=min(4, len(sources))) as ex:
+            futures = {ex.submit(_fetch_rss, url, 3): name for name, url in sources.items()}
+            for fut in as_completed(futures):
+                name = futures[fut]
+                items = fut.result() or []
+                for it in items:
+                    collected.append({
+                        "source": name,
+                        "title": it["title"],
+                        "link": it["link"],
+                    })
 
     if config.get("github", {}).get("enabled", True):
-        gh_items = _github_search(query, limit=5)
+        gh_items = _github_search(query, limit=3)
         for it in gh_items:
             collected.append({
                 "source": "GitHub",
@@ -435,8 +517,8 @@ def monitor_platforms(query: str) -> str:
         return "No live items found. Check your internet connection."
 
     scored = _score_items(collected, query)
-    top_items = [it for it, _ in scored[:8]]
-    forage = _forage_links(top_items, max_items=4, hop2_links=2)
+    top_items = [it for it, _ in scored[:5]]
+    forage = _forage_links(top_items, max_items=2, hop2_links=1)
 
     scored_block = "\n".join(
         f"[{it.get('source')}] {it.get('title')} - {it.get('link')} (score: {score:.2f})"
@@ -446,6 +528,8 @@ def monitor_platforms(query: str) -> str:
         f"[{f['source']}] {f['link']} :: {f['snippet'][:300]}"
         for f in forage
     )
+    scored_block = _truncate(scored_block, 1800)
+    forage_block = _truncate(forage_block, 1200)
 
     prompt = (
         "You are a VC analyst monitoring platforms. Based on the live items below, "
@@ -474,17 +558,21 @@ def monitor_platforms_stream(query: str) -> Iterable[str]:
     sources = {s["name"]: s["url"] for s in config.get("rss", []) if s.get("enabled")}
 
     collected = []
-    for name, url in sources.items():
-        items = _fetch_rss(url, limit=4)
-        for it in items:
-            collected.append({
-                "source": name,
-                "title": it["title"],
-                "link": it["link"],
-            })
+    if sources:
+        with ThreadPoolExecutor(max_workers=min(4, len(sources))) as ex:
+            futures = {ex.submit(_fetch_rss, url, 3): name for name, url in sources.items()}
+            for fut in as_completed(futures):
+                name = futures[fut]
+                items = fut.result() or []
+                for it in items:
+                    collected.append({
+                        "source": name,
+                        "title": it["title"],
+                        "link": it["link"],
+                    })
 
     if config.get("github", {}).get("enabled", True):
-        gh_items = _github_search(query, limit=5)
+        gh_items = _github_search(query, limit=3)
         for it in gh_items:
             collected.append({
                 "source": "GitHub",
@@ -498,8 +586,8 @@ def monitor_platforms_stream(query: str) -> Iterable[str]:
         return
 
     scored = _score_items(collected, query)
-    top_items = [it for it, _ in scored[:8]]
-    forage = _forage_links(top_items, max_items=4, hop2_links=2)
+    top_items = [it for it, _ in scored[:5]]
+    forage = _forage_links(top_items, max_items=2, hop2_links=1)
 
     scored_block = "\n".join(
         f"[{it.get('source')}] {it.get('title')} - {it.get('link')} (score: {score:.2f})"
@@ -509,6 +597,8 @@ def monitor_platforms_stream(query: str) -> Iterable[str]:
         f"[{f['source']}] {f['link']} :: {f['snippet'][:300]}"
         for f in forage
     )
+    scored_block = _truncate(scored_block, 1800)
+    forage_block = _truncate(forage_block, 1200)
 
     prompt = (
         "You are a VC analyst monitoring platforms. Based on the live items below, "

@@ -25,6 +25,8 @@ from .agent import (
     founder_interview_stream,
     investment_memo,
     investment_memo_stream,
+    spam_score,
+    SPAM_THRESHOLD,
 )
 
 from pydantic import BaseModel
@@ -135,6 +137,9 @@ if frontend_dir.is_dir():
 
 def scout(data: RequestData):
 
+    score, reasons = spam_score(data.goal)
+    if score >= SPAM_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Blocked input (spam score {score}): {', '.join(reasons) or 'high risk'}")
     try:
         return StreamingResponse(vc_scout_stream(data.goal), media_type="text/plain")
     except Exception as e:
@@ -148,6 +153,9 @@ def scout(data: RequestData):
 
 def monitor(data: MonitorRequest):
 
+    score, reasons = spam_score(data.query)
+    if score >= SPAM_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Blocked input (spam score {score}): {', '.join(reasons) or 'high risk'}")
     try:
         return StreamingResponse(monitor_platforms_stream(data.query), media_type="text/plain")
     except Exception as e:
@@ -161,6 +169,9 @@ def monitor(data: MonitorRequest):
 
 def trend(data: TopicRequest):
 
+    score, reasons = spam_score(data.topic)
+    if score >= SPAM_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Blocked input (spam score {score}): {', '.join(reasons) or 'high risk'}")
     try:
         return StreamingResponse(trend_detection_stream(data.topic), media_type="text/plain")
     except Exception as e:
@@ -174,6 +185,9 @@ def trend(data: TopicRequest):
 
 def discover(data: SectorRequest):
 
+    score, reasons = spam_score(data.sector)
+    if score >= SPAM_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Blocked input (spam score {score}): {', '.join(reasons) or 'high risk'}")
     try:
         return StreamingResponse(startup_discovery_stream(data.sector), media_type="text/plain")
     except Exception as e:
@@ -184,6 +198,9 @@ def discover(data: SectorRequest):
 
 def interview(data: FounderRequest):
 
+    score, reasons = spam_score(data.founder)
+    if score >= SPAM_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Blocked input (spam score {score}): {', '.join(reasons) or 'high risk'}")
     try:
         return StreamingResponse(founder_interview_stream(data.founder), media_type="text/plain")
     except Exception as e:
@@ -194,6 +211,9 @@ def interview(data: FounderRequest):
 
 def memo(data: CompanyRequest):
 
+    score, reasons = spam_score(data.company)
+    if score >= SPAM_THRESHOLD:
+        raise HTTPException(status_code=400, detail=f"Blocked input (spam score {score}): {', '.join(reasons) or 'high risk'}")
     try:
         return StreamingResponse(investment_memo_stream(data.company), media_type="text/plain")
     except Exception as e:

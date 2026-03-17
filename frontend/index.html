@@ -97,6 +97,17 @@
       .ghost { background: transparent; border: 1px solid var(--accent-cyan); color: var(--accent-cyan); box-shadow: none; }
       .ghost:hover { background: rgba(34, 211, 238, 0.08); transform: translateY(-1px); }
       .status { font-size: 12px; color: var(--secondary); }
+      .banner {
+        display: none;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid #7c2d12;
+        background: rgba(124, 45, 18, 0.25);
+        color: #fca5a5;
+        font-size: 13px;
+        margin-top: 12px;
+      }
+      .banner.show { display: block; }
       .output { border-radius: 12px; border: 1px solid var(--border); background: #020617; padding: 18px; min-height: 220px; white-space: pre-wrap; word-break: break-word; }
       .structured { display: grid; gap: 12px; }
       .section-card { border-radius: 12px; border: 1px solid var(--border); background: #0F172A; padding: 12px; }
@@ -186,6 +197,7 @@
           <label for="goal">Founder + company</label>
           <textarea id="goal" placeholder="Sam Altman, OpenAI">Sam Altman, OpenAI</textarea>
         </div>
+        <div id="spamBanner" class="banner"></div>
         <div class="controls">
           <button id="run">
             <span class="icon cyan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
@@ -293,6 +305,7 @@
     </div>
     <script>
       const toggleRaw = document.getElementById("toggleRaw");
+      const spamBanner = document.getElementById("spamBanner");
       const sourcesList = document.getElementById("sourcesList");
       const saveSourcesBtn = document.getElementById("saveSources");
       const clearAllBtn = document.getElementById("clearAll");
@@ -435,6 +448,11 @@
           return;
         }
 
+        if (spamBanner) {
+          spamBanner.classList.remove("show");
+          spamBanner.textContent = "";
+        }
+
         button.disabled = true;
         status.textContent = "Running...";
         setOutput(out, "Thinking...");
@@ -448,6 +466,10 @@
 
           if (!res.ok) {
             const errText = await res.text();
+            if (res.status === 400 && spamBanner) {
+              spamBanner.textContent = errText;
+              spamBanner.classList.add("show");
+            }
             throw new Error(`Backend error (${res.status}): ${errText}`);
           }
 
